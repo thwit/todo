@@ -15,13 +15,13 @@ html, body, #root { height: 100%; }
 
 body {
   margin: 0;
-  font-family: "Geist", "Söhne", ui-sans-serif, -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
-  font-size: 15px;
-  line-height: 1.45;
+  font-family: "JetBrains Mono", "Geist Mono", ui-monospace, "SF Mono", "Cascadia Code", "Fira Code", Menlo, monospace;
+  font-size: 14px;
+  line-height: 1.5;
   color: var(--ink);
   background: var(--paper);
   -webkit-font-smoothing: antialiased;
-  font-feature-settings: "ss01", "cv11";
+  font-feature-settings: "liga" 0, "calt" 1;
   /* paper grain */
   background-image:
     radial-gradient(rgba(0,0,0,0.018) 1px, transparent 1px),
@@ -193,9 +193,7 @@ body {
 }
 .composer-input::placeholder {
   color: var(--quiet);
-  font-style: italic;
-  font-family: "Instrument Serif", "EB Garamond", Georgia, serif;
-  font-size: 20px;
+  font-size: 18px;
 }
 .composer-kbd {
   font: 11px ui-monospace, "JetBrains Mono", "SF Mono", Menlo, monospace;
@@ -241,9 +239,7 @@ body {
 .list-empty {
   padding: 18px 0 6px 32px;
   color: var(--quiet);
-  font-style: italic;
-  font-family: "Instrument Serif", "EB Garamond", Georgia, serif;
-  font-size: 16px;
+  font-size: 13px;
 }
 
 .rows {
@@ -424,10 +420,8 @@ body {
 }
 
 .col-empty {
-  font-family: "Instrument Serif", "EB Garamond", Georgia, serif;
-  font-style: italic;
   color: var(--quiet);
-  font-size: 15px;
+  font-size: 12.5px;
   padding: 12px 4px;
 }
 
@@ -574,10 +568,8 @@ body {
   letter-spacing: -0.005em;
 }
 .sheet-title-it {
-  font-family: "Instrument Serif", Georgia, serif;
-  font-style: italic;
   font-weight: 400;
-  font-size: 20px;
+  font-size: 16px;
   color: var(--accent);
 }
 .sheet-x {
@@ -721,11 +713,9 @@ body {
 
 .sheet-foot {
   margin: 18px 0 0;
-  font-size: 11.5px;
+  font-size: 11px;
   line-height: 1.55;
   color: var(--quiet);
-  font-style: italic;
-  font-family: "Instrument Serif", Georgia, serif;
 }
 .sheet-foot code {
   font-family: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, monospace;
