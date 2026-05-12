@@ -6,7 +6,6 @@ const { useState, useEffect, useRef, useMemo, useCallback } = React;
 // ─────────────────────────────────────────────────────────────────────────────
 // Storage / sync — real gist backend lives in gist-sync.jsx.
 // ─────────────────────────────────────────────────────────────────────────────
-const VIEW_KEY = "todo-gist-view-v1";
 
 const seedItems = [
   { id: "a1", title: "Read draft of Solveig's thesis", status: "doing", createdAt: Date.now() - 86400000 * 3 },
@@ -35,23 +34,16 @@ function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const backend = useGistBackend({ initialItems: seedItems });
   const { items, setItems, state: syncState, creds } = backend;
-  const [view, setView] = useState(() => localStorage.getItem(VIEW_KEY) || "list");
   const [draftTitle, setDraftTitle] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const inputRef = useRef(null);
 
-  useEffect(() => localStorage.setItem(VIEW_KEY, view), [view]);
-
-  // Keyboard: ⌘K / Ctrl+K focuses the input. V toggles view.
+  // Keyboard: ⌘K / Ctrl+K focuses the input.
   useEffect(() => {
     const onKey = (e) => {
-      const tag = (e.target.tagName || "").toLowerCase();
-      const inField = tag === "input" || tag === "textarea" || e.target.isContentEditable;
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault(); inputRef.current?.focus();
-      } else if (!inField && e.key.toLowerCase() === "v") {
-        setView((v) => (v === "list" ? "board" : "list"));
       }
     };
     window.addEventListener("keydown", onKey);
@@ -80,18 +72,6 @@ function App() {
     );
   };
 
-  const reorder = (id, targetId, position /* before | after */) => {
-    setItems((xs) => {
-      const a = xs.find((x) => x.id === id);
-      if (!a) return xs;
-      const rest = xs.filter((x) => x.id !== id);
-      const idx = rest.findIndex((x) => x.id === targetId);
-      if (idx < 0) return [a, ...rest];
-      const insertAt = position === "before" ? idx : idx + 1;
-      return [...rest.slice(0, insertAt), a, ...rest.slice(insertAt)];
-    });
-  };
-
   const moveToStatus = (id, status, targetId, position) => {
     setItems((xs) => {
       let next = xs.map((x) => (x.id === id ? { ...x, status } : x));
@@ -106,12 +86,6 @@ function App() {
     });
   };
 
-  const counts = useMemo(() => {
-    const c = { todo: 0, doing: 0, done: 0 };
-    items.forEach((x) => (c[x.status] = (c[x.status] || 0) + 1));
-    return c;
-  }, [items]);
-
   // Apply theme via CSS variables on the root.
   useEffect(() => {
     const root = document.documentElement;
@@ -121,18 +95,14 @@ function App() {
     root.style.setProperty("--accent", p[2]);
     root.style.setProperty("--density", t.density === "compact" ? "0.78" : t.density === "comfy" ? "1.15" : "1");
     root.dataset.serifWordmark = t.serifWordmark ? "on" : "off";
-    root.dataset.numbers = t.showNumbers ? "on" : "off";
   }, [t]);
 
   return (
     <div className="page">
       <Header
-        view={view}
-        setView={setView}
         syncState={syncState}
         creds={creds}
         onOpenSettings={() => setSettingsOpen(true)}
-        counts={counts}
       />
 
       <main className="main">
@@ -143,33 +113,19 @@ function App() {
           onSubmit={() => addItem(draftTitle)}
         />
 
-        <div className={`view view-${view}`}>
-          {view === "list" ? (
-            <ListView
-              items={items}
-              onCycle={cycleStatus}
-              onUpdate={updateItem}
-              onRemove={removeItem}
-              onReorder={reorder}
-              editingId={editingId}
-              setEditingId={setEditingId}
-            />
-          ) : (
-            <BoardView
-              items={items}
-              onCycle={cycleStatus}
-              onUpdate={updateItem}
-              onRemove={removeItem}
-              onMove={moveToStatus}
-              onAdd={addItem}
-              editingId={editingId}
-              setEditingId={setEditingId}
-            />
-          )}
+        <div className="view">
+          <BoardView
+            items={items}
+            onCycle={cycleStatus}
+            onUpdate={updateItem}
+            onRemove={removeItem}
+            onMove={moveToStatus}
+            onAdd={addItem}
+            editingId={editingId}
+            setEditingId={setEditingId}
+          />
         </div>
       </main>
-
-      <Footnotes counts={counts} />
 
       <TweaksPanel title="Tweaks">
         <TweakSection label="Palette" />
@@ -198,11 +154,7 @@ function App() {
           options={["compact", "regular", "comfy"]}
           onChange={(v) => setTweak("density", v)}
         />
-        <TweakToggle
-          label="Show item numbers"
-          value={t.showNumbers}
-          onChange={(v) => setTweak("showNumbers", v)}
-        />
+
       </TweaksPanel>
 
       <SettingsSheet
@@ -217,7 +169,7 @@ function App() {
 // ─────────────────────────────────────────────────────────────────────────────
 // Header
 // ─────────────────────────────────────────────────────────────────────────────
-function Header({ view, setView, syncState, creds, onOpenSettings, counts }) {
+function Header({ syncState, creds, onOpenSettings }) {
   return (
     <header className="hdr">
       <div className="hdr-l">
@@ -228,8 +180,6 @@ function Header({ view, setView, syncState, creds, onOpenSettings, counts }) {
         </div>
         <SyncDot state={syncState} configured={!!creds} onClick={onOpenSettings} />
       </div>
-
-      <ViewToggle view={view} setView={setView} />
     </header>
   );
 }
@@ -252,32 +202,6 @@ function SyncDot({ state, configured, onClick }) {
       <span className="sync-pulse" />
       <span className="sync-label">{label}</span>
     </button>
-  );
-}
-
-function ViewToggle({ view, setView }) {
-  return (
-    <div className="vt" role="tablist" aria-label="View">
-      <button
-        className={`vt-btn ${view === "list" ? "is-on" : ""}`}
-        role="tab"
-        aria-selected={view === "list"}
-        onClick={() => setView("list")}
-      >
-        <IconList />
-        <span>List</span>
-      </button>
-      <button
-        className={`vt-btn ${view === "board" ? "is-on" : ""}`}
-        role="tab"
-        aria-selected={view === "board"}
-        onClick={() => setView("board")}
-      >
-        <IconBoard />
-        <span>Board</span>
-      </button>
-      <span className="vt-slider" data-pos={view} aria-hidden="true" />
-    </div>
   );
 }
 
@@ -305,158 +229,6 @@ const Composer = React.forwardRef(function Composer({ value, onChange, onSubmit 
     </form>
   );
 });
-
-// ─────────────────────────────────────────────────────────────────────────────
-// List view
-// ─────────────────────────────────────────────────────────────────────────────
-function ListView({ items, onCycle, onUpdate, onRemove, onReorder, editingId, setEditingId }) {
-  // Sorted by time added — newest first.
-  const rows = useMemo(
-    () => [...items].sort((a, b) => b.createdAt - a.createdAt),
-    [items]
-  );
-  const [dragId, setDragId] = useState(null);
-  const [dropTarget, setDropTarget] = useState(null);
-
-  if (!rows.length) {
-    return <div className="list-empty">— nothing here yet —</div>;
-  }
-
-  return (
-    <div className="list">
-      <ul className="rows">
-        {rows.map((item, i) => (
-          <Row
-            key={item.id}
-            item={item}
-            index={i}
-            isEditing={editingId === item.id}
-            setEditing={setEditingId}
-            onCycle={() => onCycle(item.id)}
-            onUpdate={(patch) => onUpdate(item.id, patch)}
-            onRemove={() => onRemove(item.id)}
-            dragId={dragId}
-            setDragId={setDragId}
-            dropTarget={dropTarget}
-            setDropTarget={setDropTarget}
-            onDrop={(srcId, pos) => {
-              onReorder(srcId, item.id, pos);
-              setDragId(null);
-              setDropTarget(null);
-            }}
-          />
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function SectionHead({ status, count }) {
-  return (
-    <div className="sec-head">
-      <h2 className="sec-title">{STATUS_LABEL[status]}</h2>
-      <span className="sec-rule" aria-hidden="true" />
-      <span className="sec-count">{String(count).padStart(2, "0")}</span>
-    </div>
-  );
-}
-
-function Row({
-  item, index, isEditing, setEditing,
-  onCycle, onUpdate, onRemove,
-  dragId, setDragId, dropTarget, setDropTarget, onDrop,
-}) {
-  const isDragging = dragId === item.id;
-  const dropAt = dropTarget && dropTarget.id === item.id ? dropTarget.pos : null;
-
-  return (
-    <li
-      className={`row row-${item.status} ${isDragging ? "is-dragging" : ""} ${dropAt ? `drop-${dropAt}` : ""}`}
-      draggable={!isEditing}
-      onDragStart={(e) => {
-        setDragId(item.id);
-        e.dataTransfer.effectAllowed = "move";
-        e.dataTransfer.setData("text/x-todo-id", item.id);
-      }}
-      onDragOver={(e) => {
-        e.preventDefault();
-        const rect = e.currentTarget.getBoundingClientRect();
-        const pos = e.clientY < rect.top + rect.height / 2 ? "before" : "after";
-        setDropTarget({ id: item.id, pos });
-      }}
-      onDragLeave={() => setDropTarget(null)}
-      onDrop={(e) => {
-        e.preventDefault();
-        const srcId = e.dataTransfer.getData("text/x-todo-id");
-        const rect = e.currentTarget.getBoundingClientRect();
-        const pos = e.clientY < rect.top + rect.height / 2 ? "before" : "after";
-        onDrop(srcId || dragId, pos);
-      }}
-      onDragEnd={() => { setDragId(null); setDropTarget(null); }}
-    >
-      <span className="row-num" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
-      <Checkbox status={item.status} onClick={onCycle} />
-      <ItemTitle
-        item={item}
-        isEditing={isEditing}
-        onStartEdit={() => setEditing(item.id)}
-        onCommit={(title) => { onUpdate({ title }); setEditing(null); }}
-        onCancel={() => setEditing(null)}
-      />
-      <span className="row-meta">{relTime(item.createdAt)}</span>
-      <button className="row-x" onClick={onRemove} aria-label="Remove">×</button>
-    </li>
-  );
-}
-
-function Checkbox({ status, onClick }) {
-  return (
-    <button
-      className={`cb cb-${status}`}
-      onClick={onClick}
-      aria-label={`Status: ${STATUS_LABEL[status]}. Click to advance.`}
-      title={`${STATUS_LABEL[status]} — click to cycle`}
-    >
-      {status === "doing" && <span className="cb-half" />}
-      {status === "done" && (
-        <svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true">
-          <path d="M3 8.5 L7 12 L13 4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      )}
-    </button>
-  );
-}
-
-function ItemTitle({ item, isEditing, onStartEdit, onCommit, onCancel }) {
-  const [draft, setDraft] = useState(item.title);
-  useEffect(() => setDraft(item.title), [item.title, isEditing]);
-
-  if (isEditing) {
-    return (
-      <input
-        autoFocus
-        className="row-title-edit"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={() => onCommit(draft)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") onCommit(draft);
-          else if (e.key === "Escape") onCancel();
-        }}
-      />
-    );
-  }
-  return (
-    <span
-      className={`row-title ${item.status === "done" ? "is-done" : ""}`}
-      onClick={onStartEdit}
-      tabIndex={0}
-      onKeyDown={(e) => { if (e.key === "Enter") onStartEdit(); }}
-    >
-      {item.title}
-    </span>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Board view
@@ -616,19 +388,52 @@ function Card({ item, dropAt, isEditing, setEditing, onCycle, onUpdate, onRemove
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Footer
-// ─────────────────────────────────────────────────────────────────────────────
-function Footnotes({ counts }) {
-  const total = counts.todo + counts.doing + counts.done;
+function Checkbox({ status, onClick }) {
   return (
-    <footer className="ftr">
-      <span>{total} items</span>
-      <span className="ftr-sep">·</span>
-      <span>{counts.done} done</span>
-      <span className="ftr-sep">·</span>
-      <span className="ftr-hint">press <kbd>V</kbd> to switch view</span>
-    </footer>
+    <button
+      className={`cb cb-${status}`}
+      onClick={onClick}
+      aria-label={`Status: ${STATUS_LABEL[status]}. Click to advance.`}
+      title={`${STATUS_LABEL[status]} — click to cycle`}
+    >
+      {status === "doing" && <span className="cb-half" />}
+      {status === "done" && (
+        <svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true">
+          <path d="M3 8.5 L7 12 L13 4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
+function ItemTitle({ item, isEditing, onStartEdit, onCommit, onCancel }) {
+  const [draft, setDraft] = useState(item.title);
+  useEffect(() => setDraft(item.title), [item.title, isEditing]);
+
+  if (isEditing) {
+    return (
+      <input
+        autoFocus
+        className="row-title-edit"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => onCommit(draft)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") onCommit(draft);
+          else if (e.key === "Escape") onCancel();
+        }}
+      />
+    );
+  }
+  return (
+    <span
+      className={`row-title ${item.status === "done" ? "is-done" : ""}`}
+      onClick={onStartEdit}
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === "Enter") onStartEdit(); }}
+    >
+      {item.title}
+    </span>
   );
 }
 
@@ -649,31 +454,12 @@ function relTime(ts) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Icons (hairline)
-// ─────────────────────────────────────────────────────────────────────────────
-function IconList() {
-  return (
-    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-      <path d="M3 4h10M3 8h10M3 12h10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" fill="none" />
-    </svg>
-  );
-}
-function IconBoard() {
-  return (
-    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-      <rect x="2.5" y="3" width="3" height="10" rx="0.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
-      <rect x="6.5" y="3" width="3" height="7" rx="0.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
-      <rect x="10.5" y="3" width="3" height="5" rx="0.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
-    </svg>
-  );
-}
 
 // Defaults — edited via Tweaks.
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
   "palette": ["#efeae0", "#1a1814", "#a8624a"],
   "density": "regular",
-  "serifWordmark": false,
-  "showNumbers": true
+  "serifWordmark": false
 }/*EDITMODE-END*/;
 
 // Mount
