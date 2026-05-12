@@ -195,15 +195,6 @@ body {
   color: var(--quiet);
   font-size: 18px;
 }
-.composer-kbd {
-  font: 11px ui-monospace, "JetBrains Mono", "SF Mono", Menlo, monospace;
-  color: var(--quiet);
-  letter-spacing: 0.03em;
-  padding: 3px 6px;
-  border: 0.5px solid var(--hair);
-  border-radius: 4px;
-}
-
 /* ── List view ────────────────────────────────────────── */
 .view {
   animation: fade 360ms ease;

@@ -302,7 +302,6 @@ const Composer = React.forwardRef(function Composer({ value, onChange, onSubmit 
         onChange={(e) => onChange(e.target.value)}
         aria-label="Add a new item"
       />
-      <kbd className="composer-kbd" aria-hidden="true">⌘K</kbd>
     </form>
   );
 });
@@ -628,7 +627,7 @@ function Footnotes({ counts }) {
       <span className="ftr-sep">·</span>
       <span>{counts.done} done</span>
       <span className="ftr-sep">·</span>
-      <span className="ftr-hint">press <kbd>V</kbd> to switch view · <kbd>⌘K</kbd> to add</span>
+      <span className="ftr-hint">press <kbd>V</kbd> to switch view</span>
     </footer>
   );
 }
@@ -673,7 +672,7 @@ function IconBoard() {
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
   "palette": ["#efeae0", "#1a1814", "#a8624a"],
   "density": "regular",
-  "serifWordmark": true,
+  "serifWordmark": false,
   "showNumbers": true
 }/*EDITMODE-END*/;
 
